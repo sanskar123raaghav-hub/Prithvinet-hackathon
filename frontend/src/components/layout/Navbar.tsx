@@ -13,15 +13,19 @@ import {
   Bell,
   Globe,
   Factory,
+  Brain,
+  MessageSquare,
 } from "lucide-react";
 
 const navLinks = [
   { href: "/dashboard", label: "Dashboard", icon: BarChart3 },
   { href: "/map", label: "Pollution Map", icon: Map },
   { href: "/forecasting", label: "AI Forecasting", icon: Activity },
+  { href: "/forecast", label: "Forecast", icon: Brain },
   { href: "/compliance", label: "Compliance", icon: Shield },
   { href: "/industries", label: "Industries", icon: Factory },
   { href: "/alerts", label: "Alerts", icon: Bell },
+  { href: "/copilot", label: "Copilot", icon: MessageSquare },
   { href: "/transparency", label: "Public Portal", icon: Globe },
 ];
 

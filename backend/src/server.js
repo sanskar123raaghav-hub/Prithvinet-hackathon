@@ -10,6 +10,8 @@ const sensorRoutes = require("./routes/sensors");
 const alertRoutes = require("./routes/alerts");
 const reportRoutes = require("./routes/reports");
 const forecastRoutes = require("./routes/forecast");
+const aiForecastRoutes = require("./routes/forecastRoutes");
+const copilotRoutes = require("./routes/copilotRoutes");
 const industryRoutes = require("./routes/industries");
 
 const app = express();
@@ -41,6 +43,8 @@ app.use("/api/sensors", sensorRoutes);
 app.use("/api/alerts", alertRoutes);
 app.use("/api/reports", reportRoutes);
 app.use("/api/forecast", forecastRoutes);
+app.use("/api/ai-forecast", aiForecastRoutes);
+app.use("/api/copilot", copilotRoutes);
 app.use("/api/industries", industryRoutes);
 
 // WebSocket for real-time data
