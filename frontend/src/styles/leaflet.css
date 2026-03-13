@@ -1,0 +1,32 @@
+/* Leaflet dark theme overrides for PRITHVINET */
+.leaflet-popup-content-wrapper {
+  background: #0d1529;
+  color: #e2e8f0;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  font-family: monospace;
+}
+
+.leaflet-popup-tip {
+  background: #0d1529;
+}
+
+.leaflet-control-zoom a {
+  background: #0d1529 !important;
+  color: #e2e8f0 !important;
+  border-color: rgba(255, 255, 255, 0.1) !important;
+}
+
+.leaflet-control-zoom a:hover {
+  background: #162040 !important;
+}
+
+.leaflet-control-attribution {
+  background: rgba(10, 15, 30, 0.8) !important;
+  color: #475569 !important;
+  font-size: 10px;
+}
+
+.leaflet-control-attribution a {
+  color: #00e5ff !important;
+}
