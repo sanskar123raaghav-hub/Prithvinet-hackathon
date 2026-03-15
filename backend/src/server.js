@@ -11,8 +11,11 @@ const alertRoutes = require("./routes/alerts");
 const reportRoutes = require("./routes/reports");
 const forecastRoutes = require("./routes/forecast");
 const aiForecastRoutes = require("./routes/forecastRoutes");
+
 const copilotRoutes = require("./routes/copilotRoutes");
 const industryRoutes = require("./routes/industries");
+const complianceRoutes = require("./routes/complianceRoutes");
+
 
 const app = express();
 const server = http.createServer(app);
@@ -44,8 +47,11 @@ app.use("/api/alerts", alertRoutes);
 app.use("/api/reports", reportRoutes);
 app.use("/api/forecast", forecastRoutes);
 app.use("/api/ai-forecast", aiForecastRoutes);
+
 app.use("/api/copilot", copilotRoutes);
 app.use("/api/industries", industryRoutes);
+app.use("/api/compliance", complianceRoutes);
+
 
 // WebSocket for real-time data
 io.on("connection", (socket) => {

@@ -1,129 +1,188 @@
 /**
  * Industry Service
  * Data access layer for industry registry operations.
- * Queries PostgreSQL when available; falls back to in-memory mock data.
+ * Connected to PostgreSQL database.
  */
 
 const db = require("../models/db");
 
-// ── Mock fallback data ────────────────────────────────────────────────
-let nextMockId = 4;
+// -- Mock data fallback (for demo when DB unavailable) --
 const MOCK_INDUSTRIES = [
   {
     id: 1,
-    name: "Raipur Steel Plant",
-    industryType: "Steel",
-    region: "Chhattisgarh",
-    latitude: 21.2514,
-    longitude: 81.6296,
-    emissionLimit: 150,
-    status: "Non-Compliant",
-    createdAt: new Date("2025-06-01").toISOString(),
-    updatedAt: new Date("2026-02-15").toISOString(),
+    name: "Tata Steel Plant",
+    industryType: "Steel Plant",
+    location: "Jamshedpur, Jharkhand",
+    latitude: 22.8046,
+    longitude: 86.2029,
+    emissionLevel: 85,
+    status: "Compliant"
   },
   {
     id: 2,
-    name: "Surat Textile Factory",
-    industryType: "Textile",
-    region: "Gujarat",
-    latitude: 21.1702,
-    longitude: 72.8311,
-    emissionLimit: 80,
-    status: "Warning",
-    createdAt: new Date("2025-08-12").toISOString(),
-    updatedAt: new Date("2026-03-01").toISOString(),
+    name: "JSW Steel Works",
+    industryType: "Steel Plant",
+    location: "Vijayanagar, Karnataka",
+    latitude: 15.2464,
+    longitude: 75.7975,
+    emissionLevel: 120,
+    status: "Warning"
   },
   {
     id: 3,
-    name: "Vizag Chemical Plant",
-    industryType: "Chemical",
-    region: "Andhra Pradesh",
-    latitude: 17.6868,
-    longitude: 83.2185,
-    emissionLimit: 100,
-    status: "Compliant",
-    createdAt: new Date("2025-04-20").toISOString(),
-    updatedAt: new Date("2026-01-10").toISOString(),
+    name: "Ultratech Cement Factory",
+    industryType: "Cement Factory",
+    location: "Nagpur, Maharashtra",
+    latitude: 21.1458,
+    longitude: 79.0882,
+    emissionLevel: 65,
+    status: "Compliant"
   },
+  {
+    id: 4,
+    name: "ACC Cement Plant",
+    industryType: "Cement Factory",
+    location: "Chaibasa, Jharkhand",
+    latitude: 22.5406,
+    longitude: 85.8024,
+    emissionLevel: 145,
+    status: "Warning"
+  },
+  {
+    id: 5,
+    name: "Reliance Chemicals Plant",
+    industryType: "Chemical Plant",
+    location: "Dahej, Gujarat",
+    latitude: 21.7219,
+    longitude: 72.6103,
+    emissionLevel: 180,
+    status: "Non-Compliant"
+  },
+  {
+    id: 6,
+    name: "Pidilite Chemical Unit",
+    industryType: "Chemical Plant",
+    location: "Vapi, Gujarat",
+    latitude: 20.3718,
+    longitude: 72.9043,
+    emissionLevel: 95,
+    status: "Compliant"
+  },
+  {
+    id: 7,
+    name: "Arvind Textile Mills",
+    industryType: "Textile Mill",
+    location: "Ahmedabad, Gujarat",
+    latitude: 23.0225,
+    longitude: 72.5714,
+    emissionLevel: 110,
+    status: "Warning"
+  },
+  {
+    id: 8,
+    name: "Raymond Textile Plant",
+    industryType: "Textile Mill",
+    location: "Thane, Maharashtra",
+    latitude: 19.2183,
+    longitude: 72.9781,
+    emissionLevel: 75,
+    status: "Compliant"
+  },
+  {
+    id: 9,
+    name: "NTPC Power Station",
+    industryType: "Power Plant",
+    location: "Dadri, Uttar Pradesh",
+    latitude: 28.5576,
+    longitude: 77.5579,
+    emissionLevel: 165,
+    status: "Non-Compliant"
+  },
+  {
+    id: 10,
+    name: "Adani Power Plant",
+    industryType: "Power Plant",
+    location: "Mundra, Gujarat",
+    latitude: 22.8391,
+    longitude: 69.4538,
+    emissionLevel: 130,
+    status: "Warning"
+  },
+  {
+    id: 11,
+    name: "Grasim Cement Works",
+    industryType: "Cement Factory",
+    location: "Chambal, Rajasthan",
+    latitude: 26.6060,
+    longitude: 76.9883,
+    emissionLevel: 55,
+    status: "Compliant"
+  }
 ];
 
-// ── DB helpers ────────────────────────────────────────────────────────
+// -- DB helpers --
 function rowToIndustry(r) {
   return {
     id: r.id,
     name: r.name,
-    industryType: r.industry_type,
-    region: r.region,
+    industryType: r.industry_type || null,
+    location: r.location,
     latitude: r.latitude != null ? parseFloat(r.latitude) : null,
     longitude: r.longitude != null ? parseFloat(r.longitude) : null,
-    emissionLimit: r.emission_limit != null ? parseFloat(r.emission_limit) : null,
+    emissionLevel: r.emission_level != null ? parseFloat(r.emission_level) : null,
     status: r.status,
     createdAt: r.created_at,
     updatedAt: r.updated_at,
   };
 }
 
-// ── Public API ────────────────────────────────────────────────────────
+// -- Public API --
 async function findAll(filters = {}) {
-  if (!db.isConnected()) {
-    let result = [...MOCK_INDUSTRIES];
-    if (filters.status) result = result.filter((i) => i.status === filters.status);
-    if (filters.region) result = result.filter((i) => i.region === filters.region);
-    return result;
+  try {
+    let text = "SELECT * FROM industries WHERE 1=1";
+    const params = [];
+    if (filters.status) {
+      params.push(filters.status);
+      text += ` AND status = $${params.length}`;
+    }
+    if (filters.location) {
+      params.push(filters.location);
+      text += ` AND location = $${params.length}`;
+    }
+    text += " ORDER BY created_at DESC";
+    const { rows } = await db.query(text, params);
+    return rows.map(rowToIndustry);
+  } catch (dbError) {
+    console.warn("[IndustryService] DB error, using mock data:", dbError.message);
+    // Filter mock data if filters applied
+    let mockData = MOCK_INDUSTRIES;
+    if (filters.status) {
+      mockData = mockData.filter(ind => ind.status === filters.status);
+    }
+    if (filters.location) {
+      mockData = mockData.filter(ind => ind.location.toLowerCase().includes(filters.location.toLowerCase()));
+    }
+    return mockData;
   }
-
-  let text = "SELECT * FROM industries WHERE 1=1";
-  const params = [];
-  if (filters.status) {
-    params.push(filters.status);
-    text += ` AND status = $${params.length}`;
-  }
-  if (filters.region) {
-    params.push(filters.region);
-    text += ` AND region = $${params.length}`;
-  }
-  text += " ORDER BY created_at DESC";
-  const { rows } = await db.query(text, params);
-  return rows.map(rowToIndustry);
 }
 
 async function findById(id) {
-  if (!db.isConnected()) {
-    return MOCK_INDUSTRIES.find((i) => i.id === Number(id)) || null;
-  }
   const { rows } = await db.query("SELECT * FROM industries WHERE id = $1", [id]);
   return rows.length ? rowToIndustry(rows[0]) : null;
 }
 
 async function create(data) {
-  if (!db.isConnected()) {
-    const industry = {
-      id: nextMockId++,
-      name: data.name,
-      industryType: data.industryType,
-      region: data.region,
-      latitude: data.latitude ?? null,
-      longitude: data.longitude ?? null,
-      emissionLimit: data.emissionLimit ?? null,
-      status: data.status || "Compliant",
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    };
-    MOCK_INDUSTRIES.push(industry);
-    return industry;
-  }
-
   const { rows } = await db.query(
-    `INSERT INTO industries (name, industry_type, region, latitude, longitude, emission_limit, status)
+    `INSERT INTO industries (name, industry_type, location, latitude, longitude, emission_level, status)
      VALUES ($1, $2, $3, $4, $5, $6, $7)
      RETURNING *`,
     [
       data.name,
-      data.industryType,
-      data.region,
+      data.industryType || null,
+      data.location,
       data.latitude ?? null,
       data.longitude ?? null,
-      data.emissionLimit ?? null,
+      data.emissionLevel ?? null,
       data.status || "Compliant",
     ]
   );
@@ -131,28 +190,15 @@ async function create(data) {
 }
 
 async function update(id, data) {
-  if (!db.isConnected()) {
-    const idx = MOCK_INDUSTRIES.findIndex((i) => i.id === Number(id));
-    if (idx === -1) return null;
-    const updated = {
-      ...MOCK_INDUSTRIES[idx],
-      ...data,
-      id: MOCK_INDUSTRIES[idx].id,
-      updatedAt: new Date().toISOString(),
-    };
-    MOCK_INDUSTRIES[idx] = updated;
-    return updated;
-  }
-
   const fields = [];
   const params = [];
   const mapping = {
     name: "name",
     industryType: "industry_type",
-    region: "region",
+    location: "location",
     latitude: "latitude",
     longitude: "longitude",
-    emissionLimit: "emission_limit",
+    emissionLevel: "emission_level",
     status: "status",
   };
 
@@ -176,15 +222,9 @@ async function update(id, data) {
 }
 
 async function remove(id) {
-  if (!db.isConnected()) {
-    const idx = MOCK_INDUSTRIES.findIndex((i) => i.id === Number(id));
-    if (idx === -1) return false;
-    MOCK_INDUSTRIES.splice(idx, 1);
-    return true;
-  }
-
   const { rowCount } = await db.query("DELETE FROM industries WHERE id = $1", [id]);
   return rowCount > 0;
 }
 
 module.exports = { findAll, findById, create, update, remove };
+

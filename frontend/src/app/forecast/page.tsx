@@ -3,213 +3,160 @@
 import { useState, useEffect, useMemo } from "react";
 import { motion } from "framer-motion";
 import {
-  Brain,
   TrendingUp,
-  ShieldCheck,
-  AlertTriangle,
+  Minimize2,
+  Maximize2,
   Clock,
   Loader2,
-  Lightbulb,
+  MapPin,
 } from "lucide-react";
-import {
-  AreaChart,
-  Area,
-  LineChart,
-  Line,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-  ReferenceLine,
-} from "recharts";
+import { PollutionAreaChart } from "@/components/charts";
 
-/* ── Types ─────────────────────────────────────────────────────────── */
-interface ForecastPoint {
-  timestamp: string;
-  predicted_value: number;
-  uncertainty: number;
+interface Forecast {
+  region: string;
+  metric: string;
+  predictions: { hour: number; value: number }[];
 }
 
-interface ForecastData {
-  location: string;
-  parameter: string;
+interface ForecastResponse {
   generatedAt: string;
-  forecastHours: number;
-  forecast: ForecastPoint[];
+  forecasts: Forecast[];
 }
 
-/* ── Helpers ───────────────────────────────────────────────────────── */
+interface ForecastStats {
+  peak: number;
+  lowest: number;
+  trend: 'Rising' | 'Stable' | 'Decreasing';
+}
+
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api";
 
-function fmtHour(iso: string) {
-  const d = new Date(iso);
-  return d.toLocaleString("en-IN", {
-    month: "short",
-    day: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-    hour12: false,
-  });
+function calculateStats(predictions: { hour: number; value: number }[]): ForecastStats {
+  const values = predictions.map(p => p.value);
+  const peak = Math.max(...values);
+  const lowest = Math.min(...values);
+  
+  const first = values[0];
+  const last = values[values.length - 1];
+  let trend: 'Rising' | 'Stable' | 'Decreasing' = 'Stable';
+  
+  if (last > first + 5) trend = 'Rising';
+  else if (last < first - 5) trend = 'Decreasing';
+  
+  return { peak, lowest, trend };
 }
 
-function severity(val: number): "good" | "moderate" | "poor" | "hazardous" {
-  if (val <= 30) return "good";
-  if (val <= 60) return "moderate";
-  if (val <= 100) return "poor";
-  return "hazardous";
+function RegionForecastCard({ forecast }: { forecast: Forecast }) {
+  const chartData = useMemo(() => 
+    forecast.predictions.map(p => ({
+      hour: p.hour === 0 ? 'Now' : `${p.hour}h`,
+      [`${forecast.metric.toLowerCase()}`]: p.value
+    }))
+  , [forecast]);
+  
+  const stats = calculateStats(forecast.predictions);
+  
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="p-6 rounded-xl border border-white/10 bg-white/[0.02] backdrop-blur-sm"
+    >
+      {/* Header */}
+      <div className="flex items-start justify-between mb-4">
+        <div>
+          <h3 className="text-xl font-bold text-white font-mono">
+            {forecast.region} Air Pollution Forecast
+          </h3>
+          <div className="flex items-center gap-2 text-sm text-slate-400 mt-1 font-mono uppercase tracking-wide">
+            <span className="px-2 py-0.5 bg-accent-cyan/20 rounded text-accent-cyan text-xs">
+              {forecast.metric}
+            </span>
+            <span>72 hours</span>
+          </div>
+        </div>
+      </div>
+
+      {/* Stats Cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
+        <div className="flex flex-col items-center p-4 bg-white/5 rounded-lg">
+          <div className="text-2xl font-bold text-accent-orange">{stats.peak}</div>
+          <div className="text-xs text-slate-400 uppercase tracking-wide mt-1">Peak</div>
+        </div>
+        <div className="flex flex-col items-center p-4 bg-white/5 rounded-lg">
+          <div className="text-2xl font-bold text-accent-green">{stats.lowest}</div>
+          <div className="text-xs text-slate-400 uppercase tracking-wide mt-1">Lowest</div>
+        </div>
+        <div className="flex flex-col items-center p-4 bg-white/5 rounded-lg">
+          <div className="text-lg font-bold text-white capitalize">{stats.trend}</div>
+          <div className="text-xs text-slate-400 uppercase tracking-wide mt-1">Trend</div>
+        </div>
+      </div>
+
+      {/* Chart */}
+      <div className="text-xs font-mono text-slate-500 mb-4 flex items-center gap-4 uppercase tracking-wider">
+        <span>Now • 24h • 48h • 72h</span>
+        <span className="ml-auto">{forecast.metric} Index</span>
+      </div>
+      
+      <PollutionAreaChart
+        data={chartData}
+        xKey="hour"
+        yKey={`${forecast.metric.toLowerCase()}`}
+        color="#00ff88"
+        height={300}
+      />
+    </motion.div>
+  );
 }
 
-const tooltipStyle = {
-  backgroundColor: "#0d1529",
-  border: "1px solid rgba(255,255,255,0.1)",
-  borderRadius: "8px",
-  fontFamily: "monospace",
-  fontSize: "12px",
-};
-
-/* ── Rule-based AI Insights ────────────────────────────────────────── */
-function generateInsights(
-  peak: ForecastPoint | null,
-  safeCount: number,
-  highRiskCount: number,
-  total: number
-) {
-  const msgs: string[] = [];
-
-  if (peak) {
-    const sev = severity(peak.predicted_value);
-    if (sev === "hazardous")
-      msgs.push(
-        `⚠️ Predicted peak of ${peak.predicted_value} µg/m³ is in the hazardous range. Consider issuing a public health advisory.`
-      );
-    else if (sev === "poor")
-      msgs.push(
-        `🟠 Peak pollution of ${peak.predicted_value} µg/m³ expected. Sensitive groups should limit outdoor activity.`
-      );
-    else
-      msgs.push(
-        `✅ Peak pollution remains within acceptable limits at ${peak.predicted_value} µg/m³.`
-      );
-  }
-
-  if (safeCount > total * 0.7)
-    msgs.push(
-      "🌿 Over 70% of the forecast period shows safe pollution levels — good conditions expected."
-    );
-  else if (highRiskCount > total * 0.4)
-    msgs.push(
-      "🔴 More than 40% of the forecast window is high-risk. Increased monitoring recommended."
-    );
-
-  if (peak && peak.uncertainty > 12)
-    msgs.push(
-      "📊 High uncertainty detected in later forecast hours. Predictions will improve as new sensor data arrives."
-    );
-  else
-    msgs.push(
-      "📊 Forecast confidence is strong across the prediction window."
-    );
-
-  return msgs;
-}
-
-/* ── Page Component ────────────────────────────────────────────────── */
 export default function ForecastPage() {
-  const [data, setData] = useState<ForecastData | null>(null);
+  const [forecastData, setForecastData] = useState<ForecastResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    setLoading(true);
-    fetch(`${API_URL}/ai-forecast`)
-      .then((r) => {
-        if (!r.ok) throw new Error(`HTTP ${r.status}`);
-        return r.json();
+    fetch(`${API_URL}/forecast`)
+      .then(res => {
+        console.log('Forecast API response status:', res.status);
+        if (!res.ok) {
+          return res.text().then(text => {
+            console.error('API error response:', text);
+            throw new Error(`HTTP ${res.status}: ${text}`);
+          });
+        }
+        return res.json();
       })
-      .then((d: ForecastData) => setData(d))
-      .catch((e) => setError(e.message))
+      .then((data: ForecastResponse) => {
+        console.log('Raw forecast data:', data);
+        setForecastData(data);
+      })
+      .catch(err => {
+        console.error('Forecast fetch error:', err);
+        setError(err.message);
+      })
       .finally(() => setLoading(false));
   }, []);
 
-  /* Chart data with upper / lower uncertainty bands */
-  const chartData = useMemo(() => {
-    if (!data) return [];
-    return data.forecast.map((p) => ({
-      time: fmtHour(p.timestamp),
-      value: p.predicted_value,
-      upper: +(p.predicted_value + p.uncertainty).toFixed(1),
-      lower: Math.max(0, +(p.predicted_value - p.uncertainty).toFixed(1)),
-      uncertainty: p.uncertainty,
-    }));
-  }, [data]);
+  const aqiForecasts = useMemo(() => 
+    forecastData?.forecasts.filter(f => f.metric === 'AQI') || []
+  , [forecastData]);
 
-  /* Insight card metrics */
-  const metrics = useMemo(() => {
-    if (!data) return null;
-    const pts = data.forecast;
-    const peak = pts.reduce(
-      (a, b) => (b.predicted_value > a.predicted_value ? b : a),
-      pts[0]
-    );
-    const safeHours = pts.filter((p) => p.predicted_value <= 60);
-    const highRisk = pts.filter((p) => p.predicted_value > 100);
-
-    // Find longest high-risk window
-    let maxRun = 0;
-    let run = 0;
-    let runStart = "";
-    let bestStart = "";
-    let bestEnd = "";
-    for (const p of pts) {
-      if (p.predicted_value > 100) {
-        if (run === 0) runStart = p.timestamp;
-        run++;
-        if (run > maxRun) {
-          maxRun = run;
-          bestStart = runStart;
-          bestEnd = p.timestamp;
-        }
-      } else {
-        run = 0;
-      }
-    }
-
-    return {
-      peak,
-      safeCount: safeHours.length,
-      highRiskCount: highRisk.length,
-      highRiskWindow:
-        maxRun > 0
-          ? `${fmtHour(bestStart)} — ${fmtHour(bestEnd)}`
-          : "None detected",
-      total: pts.length,
-    };
-  }, [data]);
-
-  const insights = useMemo(() => {
-    if (!metrics) return [];
-    return generateInsights(
-      metrics.peak,
-      metrics.safeCount,
-      metrics.highRiskCount,
-      metrics.total
-    );
-  }, [metrics]);
-
-  /* ── Render ──────────────────────────────────────────────────────── */
   if (loading) {
     return (
       <div className="min-h-screen pt-20 flex items-center justify-center">
-        <Loader2 className="h-8 w-8 text-accent-cyan animate-spin" />
+        <div className="text-center">
+          <Loader2 className="h-12 w-12 text-accent-cyan animate-spin mx-auto mb-4" />
+          <p className="text-slate-400 font-mono">Generating multi-region forecasts...</p>
+        </div>
       </div>
     );
   }
 
-  if (error || !data) {
+  if (error) {
     return (
-      <div className="min-h-screen pt-20 flex items-center justify-center text-red-400 font-mono text-sm">
-        Failed to load forecast{error ? `: ${error}` : ""}
+      <div className="min-h-screen pt-20 flex items-center justify-center text-red-400 font-mono text-lg">
+        Forecast unavailable: {error}
       </div>
     );
   }
@@ -217,223 +164,46 @@ export default function ForecastPage() {
   return (
     <div className="min-h-screen pt-20 pb-12">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        {/* ── Header ─────────────────────────────────────────────── */}
+        {/* Header */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="mb-8"
+          className="mb-12 text-center"
         >
-          <h1 className="text-2xl font-bold text-white font-mono flex items-center gap-3">
-            <Brain className="h-6 w-6 text-accent-green" />
-            Environmental Forecast Dashboard
+          <h1 className="text-4xl font-bold bg-gradient-to-r from-accent-cyan to-accent-green bg-clip-text text-transparent font-mono mb-4">
+            Multi-Region Pollution Forecast
           </h1>
-          <p className="text-sm text-slate-500 font-mono mt-1">
-            {data.parameter} predictions for {data.location} — next{" "}
-            {data.forecastHours} hours
+          <p className="text-xl text-slate-400 font-mono">
+            AQI predictions for major cities • Generated: {forecastData?.generatedAt.slice(0,16).replace('T',' ')}
           </p>
         </motion.div>
 
-        {/* ── Insight Cards ──────────────────────────────────────── */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
-          {/* Predicted Peak */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.1 }}
-            className="p-5 rounded-xl border border-white/5 bg-white/[0.02]"
-          >
-            <div className="flex items-center gap-2 text-xs font-mono text-slate-400 mb-3">
-              <TrendingUp className="h-4 w-4 text-red-400" />
-              Predicted Peak Pollution
-            </div>
-            <div className="text-2xl font-mono font-bold text-white">
-              {metrics?.peak.predicted_value ?? "—"}{" "}
-              <span className="text-sm text-slate-400">µg/m³</span>
-            </div>
-            <p className="text-xs text-slate-500 mt-2">
-              Expected at {metrics ? fmtHour(metrics.peak.timestamp) : "—"}
-            </p>
-          </motion.div>
-
-          {/* Safe Hours */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.2 }}
-            className="p-5 rounded-xl border border-white/5 bg-white/[0.02]"
-          >
-            <div className="flex items-center gap-2 text-xs font-mono text-slate-400 mb-3">
-              <ShieldCheck className="h-4 w-4 text-accent-green" />
-              Safe Hours
-            </div>
-            <div className="text-2xl font-mono font-bold text-white">
-              {metrics?.safeCount ?? "—"}{" "}
-              <span className="text-sm text-slate-400">
-                / {metrics?.total ?? 72} hrs
-              </span>
-            </div>
-            <p className="text-xs text-slate-500 mt-2">
-              Hours with PM2.5 ≤ 60 µg/m³
-            </p>
-          </motion.div>
-
-          {/* High Risk Period */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.3 }}
-            className="p-5 rounded-xl border border-white/5 bg-white/[0.02]"
-          >
-            <div className="flex items-center gap-2 text-xs font-mono text-slate-400 mb-3">
-              <AlertTriangle className="h-4 w-4 text-amber-400" />
-              High Risk Period
-            </div>
-            <div className="text-lg font-mono font-bold text-white leading-tight">
-              {metrics?.highRiskWindow}
-            </div>
-            <p className="text-xs text-slate-500 mt-2">
-              {metrics?.highRiskCount ?? 0} hours above 100 µg/m³
-            </p>
-          </motion.div>
+        {/* Forecasts Grid */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-8">
+          {aqiForecasts.map((forecast, index) => (
+            <motion.div
+              key={`${forecast.region}-${forecast.metric}`}
+              initial={{ opacity: 0, y: 30 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: index * 0.1 }}
+            >
+              <RegionForecastCard forecast={forecast} />
+            </motion.div>
+          ))}
         </div>
 
-        {/* ── Forecast Chart with Uncertainty Band ───────────────── */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.35 }}
-          className="p-6 rounded-xl border border-white/5 bg-white/[0.02] mb-8"
-        >
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-sm font-mono text-slate-400">
-              PM2.5 FORECAST — 72 HOUR PREDICTION
-            </h3>
-            <div className="flex items-center gap-4 text-xs font-mono">
-              <span className="flex items-center gap-1.5">
-                <span className="h-2 w-6 bg-accent-green rounded" />
-                Predicted
-              </span>
-              <span className="flex items-center gap-1.5">
-                <span className="h-2 w-6 bg-accent-cyan/30 rounded" />
-                Uncertainty
-              </span>
-            </div>
-          </div>
-
-          <ResponsiveContainer width="100%" height={380}>
-            <AreaChart data={chartData}>
-              <defs>
-                <linearGradient
-                  id="uncertaintyGrad"
-                  x1="0"
-                  y1="0"
-                  x2="0"
-                  y2="1"
-                >
-                  <stop offset="0%" stopColor="#22d3ee" stopOpacity={0.15} />
-                  <stop offset="100%" stopColor="#22d3ee" stopOpacity={0.02} />
-                </linearGradient>
-              </defs>
-              <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
-              <XAxis
-                dataKey="time"
-                stroke="#475569"
-                fontSize={10}
-                fontFamily="monospace"
-                interval={11}
-                angle={-30}
-                textAnchor="end"
-                height={60}
-              />
-              <YAxis
-                stroke="#475569"
-                fontSize={11}
-                fontFamily="monospace"
-                label={{
-                  value: "µg/m³",
-                  angle: -90,
-                  position: "insideLeft",
-                  fill: "#64748b",
-                  fontSize: 11,
-                }}
-              />
-              <Tooltip contentStyle={tooltipStyle} />
-              <ReferenceLine
-                y={60}
-                stroke="#f59e0b"
-                strokeDasharray="5 5"
-                label={{
-                  value: "Moderate",
-                  fill: "#f59e0b",
-                  fontSize: 10,
-                }}
-              />
-              <ReferenceLine
-                y={100}
-                stroke="#ff4444"
-                strokeDasharray="5 5"
-                label={{
-                  value: "Unhealthy",
-                  fill: "#ff4444",
-                  fontSize: 10,
-                }}
-              />
-              {/* Uncertainty upper band */}
-              <Area
-                type="monotone"
-                dataKey="upper"
-                stroke="none"
-                fill="url(#uncertaintyGrad)"
-                name="Upper bound"
-              />
-              {/* Uncertainty lower band (invisible fill to create band effect) */}
-              <Area
-                type="monotone"
-                dataKey="lower"
-                stroke="none"
-                fill="#0d1529"
-                name="Lower bound"
-              />
-              {/* Main predicted line */}
-              <Line
-                type="monotone"
-                dataKey="value"
-                stroke="#00ff88"
-                strokeWidth={2}
-                dot={false}
-                name="PM2.5"
-              />
-            </AreaChart>
-          </ResponsiveContainer>
-        </motion.div>
-
-        {/* ── AI Insights Panel ──────────────────────────────────── */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.45 }}
-          className="p-6 rounded-xl border border-accent-cyan/20 bg-accent-cyan/5"
-        >
-          <h3 className="text-sm font-mono text-accent-cyan flex items-center gap-2 mb-4">
-            <Lightbulb className="h-4 w-4" />
-            AI INSIGHTS
-          </h3>
-          <div className="space-y-3">
-            {insights.map((msg, i) => (
-              <div
-                key={i}
-                className="flex items-start gap-3 text-sm text-slate-300 font-mono leading-relaxed"
-              >
-                <Clock className="h-4 w-4 text-slate-500 mt-0.5 shrink-0" />
-                {msg}
-              </div>
-            ))}
-          </div>
-          <p className="text-[10px] text-slate-600 font-mono mt-4">
-            Generated at {data.generatedAt} • Model: PRITHVINET-FORECAST v2.4
-          </p>
-        </motion.div>
+        {aqiForecasts.length === 0 && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            className="col-span-full text-center py-24 text-slate-500"
+          >
+            <p className="text-2xl font-mono mb-4">No forecast data available</p>
+            <p className="text-lg">Check backend service status</p>
+          </motion.div>
+        )}
       </div>
     </div>
   );
 }
+

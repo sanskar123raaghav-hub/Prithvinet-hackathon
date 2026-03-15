@@ -69,7 +69,7 @@ export function useLatestSensors() {
   return useFetch<SensorsResponse>(
     () =>
       fetch(
-        `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api"}/sensors/latest`
+        `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api"}/sensors`
       ).then((r) => r.json()) as Promise<SensorsResponse>,
     []
   );

@@ -27,3 +27,28 @@ export const NOISE_LIMITS = {
 
 export const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api";
 export const WS_URL = process.env.NEXT_PUBLIC_WS_URL || "http://localhost:5000";
+
+export const RISK_THRESHOLDS = {
+  AQI: 150,
+  NOISE: 75,
+  DISSOLVED_OXYGEN_MIN: 4.0
+} as const;
+
+export const CITY_COORDS: Record<string, [number, number]> = {
+  Delhi: [28.6139, 77.2090],
+  Mumbai: [19.0760, 72.8777],
+  Bengaluru: [12.9716, 77.5946],
+  Hyderabad: [17.3850, 78.4867],
+  Ahmedabad: [23.0225, 72.5714],
+  Chennai: [13.0827, 80.2707],
+  Kolkata: [22.5726, 88.3639],
+  Pune: [18.5204, 73.8567],
+  Jaipur: [26.9124, 75.7873],
+  Lucknow: [26.8467, 80.9462]
+} as const;
+
+export const ICON_MAP: Record<string, string> = {
+  air: "Cloud",
+  water: "Droplets",
+  noise: "Volume2"
+} as const;

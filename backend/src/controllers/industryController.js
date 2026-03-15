@@ -12,7 +12,7 @@ function validateBody(body, requireAll = true) {
   const errors = [];
   if (requireAll && !body.name) errors.push("name is required");
   if (requireAll && !body.industryType) errors.push("industryType is required");
-  if (requireAll && !body.region) errors.push("region is required");
+  if (requireAll && !body.location) errors.push("location is required");
 
   if (body.latitude !== undefined && (isNaN(body.latitude) || body.latitude < -90 || body.latitude > 90)) {
     errors.push("latitude must be between -90 and 90");
@@ -20,8 +20,8 @@ function validateBody(body, requireAll = true) {
   if (body.longitude !== undefined && (isNaN(body.longitude) || body.longitude < -180 || body.longitude > 180)) {
     errors.push("longitude must be between -180 and 180");
   }
-  if (body.emissionLimit !== undefined && (isNaN(body.emissionLimit) || body.emissionLimit < 0)) {
-    errors.push("emissionLimit must be a positive number");
+  if (body.emissionLevel !== undefined && (isNaN(body.emissionLevel) || body.emissionLevel < 0)) {
+    errors.push("emissionLevel must be a positive number");
   }
   if (body.status && !VALID_STATUSES.includes(body.status)) {
     errors.push(`status must be one of: ${VALID_STATUSES.join(", ")}`);
@@ -32,8 +32,8 @@ function validateBody(body, requireAll = true) {
 // ── Handlers ──────────────────────────────────────────────────────────
 async function getAllIndustries(req, res) {
   try {
-    const { status, region } = req.query;
-    const industries = await IndustryService.findAll({ status, region });
+    const { status, location } = req.query;
+    const industries = await IndustryService.findAll({ status, location });
     res.json({ count: industries.length, industries });
   } catch (err) {
     console.error("[IndustryController] findAll error:", err.message);

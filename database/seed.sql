@@ -22,20 +22,28 @@ INSERT INTO sensors (id, type, location, region, latitude, longitude, status) VA
   ('S5023', 'air',   'Jaipur Heritage',         'North India', 26.9124,  75.7873,  'active')
 ON CONFLICT (id) DO NOTHING;
 
--- Sample alerts
+-- Sample alerts (matching new threshold rules)
 INSERT INTO alerts (type, severity, message, sensor_id, location) VALUES
-  ('Air Quality', 'critical', 'PM2.5 level exceeded 150 µg/m³ in Delhi Central zone',    'S1042', 'Delhi Central'),
-  ('Water Quality', 'critical', 'Dissolved oxygen dropped below 4.0 mg/L',                'S4502', 'Yamuna River Station 7'),
-  ('Noise', 'warning', 'Industrial zone noise exceeded 75 dB threshold',                   'S2081', 'Ahmedabad Industrial'),
-  ('Air Quality', 'warning', 'Ozone concentration approaching threshold',                  'S3012', 'Kolkata Industrial'),
-  ('Water Quality', 'info', 'pH levels normalized at Chennai Harbor station',               'S4501', 'Chennai Harbor');
+  ('Air Quality', 'critical', 'PM2.5 exceeded 150 µg/m³ at Delhi Central',                'S1042', 'Delhi Central'),
+  ('Noise', 'warning', 'Noise level exceeded 85 dB at Ahmedabad Industrial',               'S2081', 'Ahmedabad Industrial'),
+  ('Water Quality', 'warning', 'Water pH outside 6.5–8.5 range at Chennai Harbor',         'S4501', 'Chennai Harbor'),
+  ('Air Quality', 'warning', 'PM2.5 exceeded 150 µg/m³ at Kolkata Industrial',             'S3012', 'Kolkata Industrial'),
+  ('Noise', 'warning', 'Noise level exceeded 85 dB at Hyderabad Tech Park',                'S6010', 'Hyderabad Tech Park')
+ON CONFLICT DO NOTHING;
 
 -- Industries
-INSERT INTO industries (name, industry_type, region, latitude, longitude, emission_limit, status) VALUES
+INSERT INTO industries (name, industry_type, location, latitude, longitude, emission_level, status) VALUES
   ('Raipur Steel Plant',    'Steel',    'Chhattisgarh',    21.2514, 81.6296, 150.00, 'Non-Compliant'),
   ('Surat Textile Factory',  'Textile',  'Gujarat',         21.1702, 72.8311,  80.00, 'Warning'),
   ('Vizag Chemical Plant',   'Chemical', 'Andhra Pradesh',  17.6868, 83.2185, 100.00, 'Compliant')
-ON CONFLICT DO NOTHING;
+ON CONFLICT (name) DO UPDATE SET
+  industry_type = EXCLUDED.industry_type,
+  location = EXCLUDED.location,
+  latitude = EXCLUDED.latitude,
+  longitude = EXCLUDED.longitude,
+  emission_level = EXCLUDED.emission_level,
+  status = EXCLUDED.status
+RETURNING *;
 
 -- Sample reports
 INSERT INTO reports (title, category, file_size) VALUES

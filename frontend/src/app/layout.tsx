@@ -16,9 +16,9 @@ const geistMono = localFont({
 });
 
 export const metadata: Metadata = {
-  title: "PRITHVINET — AI Environmental Intelligence Platform",
+  title: "PRITHVINET — Government of Chhattisgarh Environmental Monitoring Portal",
   description:
-    "AI-powered environmental monitoring and forecasting platform. Track air, water, and noise pollution in real-time.",
+    "Official environmental monitoring and forecasting portal of the Government of Chhattisgarh. Track air, water, and noise pollution in real-time across the state.",
 };
 
 export default function RootLayout({
@@ -27,12 +27,12 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className="dark">
+    <html lang="en">
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased bg-navy-900 text-slate-200`}
+        className={`${geistSans.variable} ${geistMono.variable} antialiased bg-white text-gray-800`}
       >
         <Navbar />
-        <main>{children}</main>
+        <main className="min-h-screen">{children}</main>
         <Footer />
       </body>
     </html>

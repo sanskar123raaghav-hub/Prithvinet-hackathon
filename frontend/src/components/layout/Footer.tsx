@@ -1,98 +1,88 @@
-import { Activity, Github, ExternalLink } from "lucide-react";
+import { Activity } from "lucide-react";
 import Link from "next/link";
-
-const footerLinks = {
-  Platform: [
-    { label: "Dashboard", href: "/dashboard" },
-    { label: "Pollution Map", href: "/map" },
-    { label: "AI Forecasting", href: "/forecasting" },
-    { label: "Compliance", href: "/compliance" },
-  ],
-  Resources: [
-    { label: "API Documentation", href: "#" },
-    { label: "Data Standards", href: "#" },
-    { label: "Open Data Portal", href: "/transparency" },
-    { label: "Research Papers", href: "#" },
-  ],
-  Legal: [
-    { label: "Privacy Policy", href: "#" },
-    { label: "Terms of Service", href: "#" },
-    { label: "Data Governance", href: "#" },
-    { label: "Accessibility", href: "#" },
-  ],
-};
 
 export default function Footer() {
   return (
-    <footer className="border-t border-white/5 bg-navy-900">
+    <footer className="bg-gray-100 border-t border-gray-200 mt-12">
+
+      {/* Main footer */}
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        {/* Main footer */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-8 py-12">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-8 py-10">
+
           {/* Brand */}
-          <div className="md:col-span-1">
-            <div className="flex items-center gap-2 mb-4">
-              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-accent-cyan/10 border border-accent-cyan/20">
-                <Activity className="h-4 w-4 text-accent-cyan" />
+          <div className="md:col-span-2">
+            <div className="flex items-center gap-2 mb-3">
+              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#0b3d91]">
+                <Activity className="h-4 w-4 text-white" />
               </div>
-              <span className="font-mono text-sm font-bold tracking-wider text-white">
+              <span className="text-sm font-bold text-[#0b3d91] tracking-wide uppercase">
                 PRITHVINET
               </span>
             </div>
-            <p className="text-sm text-slate-500 leading-relaxed">
-              AI-Driven Environmental Intelligence Platform. Monitoring air, water, and noise pollution for a sustainable future.
+            <p className="text-xs font-semibold text-[#0b3d91] mb-1">
+              Government of Chhattisgarh
             </p>
-            <div className="flex items-center gap-3 mt-4">
-              <div className="flex items-center gap-1.5 text-xs text-accent-green font-mono">
-                <div className="h-1.5 w-1.5 rounded-full bg-accent-green animate-pulse" />
-                All Systems Operational
-              </div>
+            <p className="text-xs text-gray-500 mb-1">
+              Department of Environment and Climate Change
+            </p>
+            <p className="text-xs text-gray-500 leading-relaxed mb-3">
+              PRITHVINET Environmental Monitoring System — Real-time tracking of
+              air, water, and noise pollution across Chhattisgarh.
+            </p>
+            <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-green-50 border border-green-200">
+              <span className="h-1.5 w-1.5 rounded-full bg-green-500 animate-pulse" />
+              <span className="text-xs text-green-700 font-medium">All Systems Operational</span>
             </div>
           </div>
 
-          {/* Links */}
-          {Object.entries(footerLinks).map(([category, links]) => (
-            <div key={category}>
-              <h4 className="font-mono text-xs font-semibold tracking-widest text-slate-400 uppercase mb-4">
-                {category}
-              </h4>
-              <ul className="space-y-2.5">
-                {links.map((link) => (
-                  <li key={link.label}>
-                    <Link
-                      href={link.href}
-                      className="text-sm text-slate-500 hover:text-accent-cyan transition-colors"
-                    >
-                      {link.label}
-                    </Link>
-                  </li>
-                ))}
-              </ul>
+          {/* Quick links */}
+          <div>
+            <div className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">
+              Quick Links
             </div>
-          ))}
+            <ul className="space-y-1.5">
+              {[
+                { href: "/dashboard",    label: "Dashboard"     },
+                { href: "/map",          label: "Pollution Map" },
+                { href: "/forecast",     label: "Forecast"      },
+                { href: "/alerts",       label: "Alerts"        },
+                { href: "/copilot",      label: "AI Copilot"    },
+                { href: "/transparency", label: "Public Portal" },
+              ].map(({ href, label }) => (
+                <li key={href}>
+                  <Link
+                    href={href}
+                    className="text-xs text-gray-500 hover:text-[#0b3d91] transition-colors"
+                  >
+                    {label}
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          {/* Disclaimer */}
+          <div>
+            <div className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">
+              Disclaimer
+            </div>
+            <p className="text-xs text-gray-400 leading-relaxed">
+              Data on this portal is sourced from real-time environmental sensors
+              deployed across Chhattisgarh. For official regulatory purposes,
+              refer to CPCB and SPCB certified reports.
+            </p>
+          </div>
         </div>
 
         {/* Bottom bar */}
-        <div className="border-t border-white/5 py-6 flex flex-col sm:flex-row items-center justify-between gap-4">
-          <div className="flex items-center gap-4 text-xs text-slate-600 font-mono">
-            <span>&copy; {new Date().getFullYear()} PRITHVINET</span>
-            <span className="hidden sm:inline">|</span>
-            <span className="hidden sm:inline">Environmental Intelligence Division</span>
-          </div>
-          <div className="flex items-center gap-4">
-            <a
-              href="https://github.com"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-slate-600 hover:text-slate-400 transition-colors"
-            >
-              <Github className="h-4 w-4" />
-            </a>
-            <a
-              href="#"
-              className="text-slate-600 hover:text-slate-400 transition-colors"
-            >
-              <ExternalLink className="h-4 w-4" />
-            </a>
+        <div className="border-t border-gray-200 py-4">
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-2">
+            <p className="text-xs text-gray-500 text-center sm:text-left">
+              © 2026 Government of Chhattisgarh. All rights reserved.
+            </p>
+            <p className="text-xs text-gray-400">
+              PRITHVINET · Environmental Monitoring System · v2.0
+            </p>
           </div>
         </div>
       </div>

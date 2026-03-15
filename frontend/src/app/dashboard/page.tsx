@@ -117,6 +117,29 @@ export default function DashboardPage() {
   const water = getWaterSummary(sensors);
   const noise = getNoiseSummary(sensors);
 
+  // Top location per type
+  const worstAirSensor = sensors.filter(s => s.type === "air").sort((a, b) => (b.lastReading?.aqi ?? 0) - (a.lastReading?.aqi ?? 0))[0];
+  const worstWaterSensor = sensors.filter(s => s.type === "water").sort((a, b) => Math.abs((a.lastReading?.ph ?? 7) - 7) - Math.abs((b.lastReading?.ph ?? 7) - 7))[0];
+  const worstNoiseSensor = sensors.filter(s => s.type === "noise").sort((a, b) => (b.lastReading?.decibels ?? 0) - (a.lastReading?.decibels ?? 0))[0];
+
+  // Per-location breakdown
+  const locationBreakdown = useMemo(() => {
+    const map: Record<string, { location: string; aqi?: number; ph?: number; db?: number; status: string }> = {};
+    sensors.forEach(s => {
+      const loc = s.location ?? "Unknown";
+      if (!map[loc]) map[loc] = { location: loc, status: "good" };
+      if (s.type === "air")   map[loc].aqi = s.lastReading?.aqi;
+      if (s.type === "water") map[loc].ph  = s.lastReading?.ph;
+      if (s.type === "noise") map[loc].db  = s.lastReading?.decibels;
+    });
+    return Object.values(map).map(loc => ({
+      ...loc,
+      status:
+        (loc.aqi ?? 0) > 200 || (loc.db ?? 0) > 80 ? "alert" :
+        (loc.aqi ?? 0) > 100 || (loc.db ?? 0) > 65 ? "warning" : "good",
+    }));
+  }, [sensors]);
+
   // Stat cards from live data
   const stats = [
     {
@@ -127,6 +150,7 @@ export default function DashboardPage() {
       trend: air.avg <= 50 ? ("down" as const) : ("up" as const),
       icon: Wind,
       status: air.avg <= 50 ? "good" : air.avg <= 100 ? "warning" : "alert",
+      location: worstAirSensor?.location ?? "—",
     },
     {
       label: "Water Quality",
@@ -136,6 +160,7 @@ export default function DashboardPage() {
       trend: "up" as const,
       icon: Droplets,
       status: water.avgPh >= 6.5 && water.avgPh <= 8.5 ? "good" : "warning",
+      location: worstWaterSensor?.location ?? "—",
     },
     {
       label: "Noise Level",
@@ -145,6 +170,7 @@ export default function DashboardPage() {
       trend: noise.avgDb <= 65 ? ("down" as const) : ("up" as const),
       icon: Volume2,
       status: noise.avgDb <= 65 ? "good" : "warning",
+      location: worstNoiseSensor?.location ?? "—",
     },
     {
       label: "Active Alerts",
@@ -154,6 +180,7 @@ export default function DashboardPage() {
       trend: unacknowledged.length > 2 ? ("up" as const) : ("down" as const),
       icon: AlertTriangle,
       status: unacknowledged.length > 2 ? "alert" : unacknowledged.length > 0 ? "warning" : "good",
+      location: `${sensors.length} sensors`,
     },
   ];
 
@@ -277,9 +304,69 @@ export default function DashboardPage() {
               <div className="text-xs text-slate-500 mt-1 font-mono">
                 {stat.label}
               </div>
+              <div className="flex items-center gap-1 mt-2">
+                <MapPin className="h-3 w-3 text-slate-600" />
+                <span className="text-xs font-mono text-slate-600 truncate">{stat.location}</span>
+              </div>
             </motion.div>
           ))}
         </div>
+
+        {/* Location Breakdown Table */}
+        {locationBreakdown.length > 0 && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.22 }}
+            className="mb-8 p-6 rounded-xl border border-white/5 bg-white/[0.02]"
+          >
+            <h3 className="text-sm font-mono text-slate-400 mb-4 flex items-center gap-2">
+              <MapPin className="h-4 w-4 text-accent-cyan" />
+              SENSOR LOCATIONS — LIVE READINGS
+            </h3>
+            <div className="overflow-x-auto">
+              <table className="w-full text-xs font-mono">
+                <thead>
+                  <tr className="border-b border-white/5">
+                    <th className="text-left text-slate-500 pb-2 pr-4">LOCATION</th>
+                    <th className="text-right text-slate-500 pb-2 pr-4">AQI</th>
+                    <th className="text-right text-slate-500 pb-2 pr-4">pH</th>
+                    <th className="text-right text-slate-500 pb-2 pr-4">NOISE (dB)</th>
+                    <th className="text-right text-slate-500 pb-2">STATUS</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {locationBreakdown.map((loc) => (
+                    <tr key={loc.location} className="border-b border-white/[0.03] hover:bg-white/[0.02] transition-colors">
+                      <td className="py-2 pr-4 text-slate-300 flex items-center gap-1.5">
+                        <MapPin className="h-3 w-3 text-accent-cyan flex-shrink-0" />
+                        {loc.location}
+                      </td>
+                      <td className={`py-2 pr-4 text-right ${(loc.aqi ?? 0) > 200 ? "text-red-400" : (loc.aqi ?? 0) > 100 ? "text-yellow-400" : "text-accent-green"}`}>
+                        {loc.aqi ?? "—"}
+                      </td>
+                      <td className={`py-2 pr-4 text-right ${loc.ph && (loc.ph < 6.5 || loc.ph > 8.5) ? "text-yellow-400" : "text-accent-green"}`}>
+                        {loc.ph?.toFixed(1) ?? "—"}
+                      </td>
+                      <td className={`py-2 pr-4 text-right ${(loc.db ?? 0) > 80 ? "text-red-400" : (loc.db ?? 0) > 65 ? "text-yellow-400" : "text-accent-green"}`}>
+                        {loc.db ?? "—"}
+                      </td>
+                      <td className="py-2 text-right">
+                        <span className={`px-2 py-0.5 rounded-full text-xs ${
+                          loc.status === "alert"   ? "bg-red-400/10 text-red-400 border border-red-400/20" :
+                          loc.status === "warning" ? "bg-yellow-400/10 text-yellow-400 border border-yellow-400/20" :
+                                                     "bg-accent-green/10 text-accent-green border border-accent-green/20"
+                        }`}>
+                          {loc.status.toUpperCase()}
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </motion.div>
+        )}
 
         {/* Map shortcut */}
         <motion.div
