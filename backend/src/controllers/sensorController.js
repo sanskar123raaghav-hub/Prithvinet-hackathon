@@ -37,4 +37,20 @@ async function getSensorReadings(req, res) {
   }
 }
 
-module.exports = { getAllSensors, getSensorById, getSensorReadings };
+async function postReading(req, res) {
+  try {
+    const { id } = req.params;
+    const readingData = req.body;
+    if (!readingData || Object.keys(readingData).length === 0) {
+      return res.status(400).json({ error: "Reading data required" });
+    }
+    const result = await SensorService.saveReading(id, readingData);
+    res.status(201).json({ message: "Reading saved successfully", readingId: result.id });
+  } catch (err) {
+    console.error("[SensorController] Error saving reading:", err);
+    res.status(400).json({ error: err.message });
+  }
+}
+
+module.exports = { getAllSensors, getSensorById, getSensorReadings, postReading };
+

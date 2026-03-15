@@ -122,4 +122,55 @@ function generateMockReadings(sensorId, hours) {
   return readings;
 }
 
-module.exports = { findAll, findById, getReadings, getLatestReadings };
+async function saveReading(sensorId, readingData) {
+  const sensor = await findById(sensorId);
+  if (!sensor) {
+    throw new Error(`Sensor ${sensorId} not found`);
+  }
+
+  const recordedAt = new Date().toISOString();
+  
+  if (!db.isConnected()) {
+    console.log(`[MOCK] Saved reading for ${sensorId}:`, readingData);
+    return { id: Date.now(), sensorId, recordedAt };
+  }
+
+  // Build dynamic INSERT based on provided fields
+  let text = `INSERT INTO sensor_readings (sensor_id, recorded_at`;
+  const params = [sensorId, recordedAt];
+  let paramIndex = 2;
+
+  if (readingData.pm25 !== undefined) {
+    text += `, pm25`;
+    params.push(parseFloat(readingData.pm25));
+    paramIndex++;
+  }
+  if (readingData.ph !== undefined) {
+    text += `, ph`;
+    params.push(parseFloat(readingData.ph));
+    paramIndex++;
+  }
+  if (readingData.decibels !== undefined) {
+    text += `, decibels`;
+    params.push(parseFloat(readingData.decibels));
+    paramIndex++;
+  }
+  if (readingData.peak_db !== undefined) {
+    text += `, peak_db`;
+    params.push(parseFloat(readingData.peak_db));
+    paramIndex++;
+  }
+  // Add more fields as needed: pm10, dissolved_oxygen, etc.
+
+  text += `) VALUES ($${1}, $${2}`;
+  for (let i = 3; i <= params.length; i++) {
+    text += `, $${i}`;
+  }
+  text += `) RETURNING id`;
+
+  const { rows } = await db.query(text, params);
+  return rows[0];
+}
+
+module.exports = { findAll, findById, getReadings, getLatestReadings, saveReading };
+

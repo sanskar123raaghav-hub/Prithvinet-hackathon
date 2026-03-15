@@ -108,15 +108,31 @@ CREATE TABLE IF NOT EXISTS forecast_logs (
 CREATE TABLE IF NOT EXISTS industries (
     id SERIAL PRIMARY KEY,
     name VARCHAR(255) NOT NULL,
-    industry_type VARCHAR(100) NOT NULL,
-    region VARCHAR(100),
+    industry_type VARCHAR(100),
+    location VARCHAR(100),
     latitude DECIMAL(10, 6),
     longitude DECIMAL(10, 6),
-    emission_limit DECIMAL(10, 2),
+    emission_level DECIMAL(10, 2),
     status VARCHAR(20) DEFAULT 'Compliant' CHECK (status IN ('Compliant', 'Warning', 'Non-Compliant')),
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
+
+-- Migration for existing tables
+DO $$
+BEGIN
+    -- Only run if old columns exist
+    IF EXISTS (SELECT column_name FROM information_schema.columns 
+               WHERE table_name='industries' AND column_name='region') THEN
+        ALTER TABLE industries RENAME COLUMN region TO location;
+    END IF;
+    IF EXISTS (SELECT column_name FROM information_schema.columns 
+               WHERE table_name='industries' AND column_name='emission_limit') THEN
+        ALTER TABLE industries RENAME COLUMN emission_limit TO emission_level;
+    END IF;
+    -- Make industry_type optional if it was NOT NULL
+    ALTER TABLE industries ALTER COLUMN industry_type DROP NOT NULL;
+END $$;
 
 -- ============================================
 -- Indexes
@@ -129,4 +145,5 @@ CREATE INDEX IF NOT EXISTS idx_alerts_created ON alerts(created_at);
 CREATE INDEX IF NOT EXISTS idx_compliance_regulation ON compliance_checks(regulation_name);
 CREATE INDEX IF NOT EXISTS idx_forecast_type ON forecast_logs(pollution_type);
 CREATE INDEX IF NOT EXISTS idx_industries_status ON industries(status);
-CREATE INDEX IF NOT EXISTS idx_industries_region ON industries(region);
+CREATE INDEX IF NOT EXISTS idx_industries_location ON industries(location);
+CREATE INDEX IF NOT EXISTS idx_industries_status ON industries(status);

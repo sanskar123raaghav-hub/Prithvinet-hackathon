@@ -73,4 +73,9 @@ export const api = {
     request(`/industries/${id}`, { method: "PUT", body }),
   deleteIndustry: (id: number) =>
     request(`/industries/${id}`, { method: "DELETE" }),
+
+  // Copilot
+  copilot: {
+    query: (query: string) => request("/copilot/query", { method: "POST", body: { query } }),
+  },
 };

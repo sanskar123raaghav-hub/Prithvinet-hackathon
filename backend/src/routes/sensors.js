@@ -1,5 +1,5 @@
 const express = require("express");
-const { getAllSensors, getSensorById, getSensorReadings } = require("../controllers/sensorController");
+const { getAllSensors, getSensorById, getSensorReadings, postReading } = require("../controllers/sensorController");
 const SensorService = require("../services/sensorService");
 
 const router = express.Router();
@@ -22,5 +22,8 @@ router.get("/:id", getSensorById);
 
 // GET /api/sensors/:id/readings
 router.get("/:id/readings", getSensorReadings);
+
+// POST /api/sensors/:id/reading — submit new sensor reading
+router.post("/:id/reading", postReading);
 
 module.exports = router;
